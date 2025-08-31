@@ -9,7 +9,7 @@
 
 _start:
 	// Here your execution starts
-	bl check_palindrom
+	bl check_palindrom // result of this function will be stored in r0
 	cmp r0, #0
 	beq _start_is_no_palindrom
 	bl is_palindrom
@@ -24,7 +24,7 @@ check_palindrom:
 	// Here you could check whether input is a palindrom or not
 	ldr r1, =input
 	mov r0, r1
-	get_end_loop_start:
+	get_end_loop_start: // loop for setting r1 to end of input
 		add r1, #1
 		ldrb r3, [r1]
 		cmp r3, #0
@@ -46,6 +46,7 @@ check_palindrom:
 		cmp r2, #' '
 		beq add
 
+		// checking for wildcard
 		cmp r3, #'?'
 		beq wildcard
 		cmp r3, #'#'
@@ -59,11 +60,11 @@ check_palindrom:
 		mov r2, r3
 		b upper_case1
 	wildcard_end:
-		cmp r3, #'a'
+		cmp r3, #'a' // check if character is lowercase and make it uppercase
 		ble upper_case0
 		sub r3, #32
 	upper_case0:
-		cmp r2, #'a'
+		cmp r2, #'a' // check if character is lowercase and make it uppercase
 		ble upper_case1
 		sub r2, #32
 	upper_case1:
@@ -84,11 +85,11 @@ is_palindrom:
 	// Switch on only the 5 rightmost LEDs
 	// Write 'Palindrom detected' to UART
 	mov r0, #0x1f
-	ldr r1, =#0xff200000
+	ldr r1, =#0xff200000 // load led offset into r1
 	str r0, [r1]
 	
 	ldr r0, =palindrome_str
-	ldr r1, =#0xff201000
+	ldr r1, =#0xff201000 // load uart offset into r1
 	palindrome_uart_loop:
 	ldrb r2, [r0]
 	strb r2, [r1]
@@ -102,11 +103,11 @@ is_no_palindrom:
 	// Switch on only the 5 leftmost LEDs
 	// Write 'Not a palindrom' to UART
 	mov r0, #0xfe0
-	ldr r1, =#0xff200000
+	ldr r1, =#0xff200000 // load led offset into r1
 	str r0, [r1]
 	
 	ldr r0, =not_palindrome_str
-	ldr r1, =#0xff201000
+	ldr r1, =#0xff201000 // load uart offset into r1
 	no_palindrome_uart_loop:
 	ldrb r2, [r0]
 	strb r2, [r1]
