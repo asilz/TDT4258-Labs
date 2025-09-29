@@ -223,31 +223,31 @@ void update_game_state()
     draw_ball(black);
     switch (ball_angle)
     {
-    case 0b001:
+    case 0b001: // 90
         ball_x += 1;
         break;
-    case 0b100:
+    case 0b100: // 45
         ball_x += 1;
         ball_y -= 1;
         break;
-    case 0b000:
+    case 0b000: // 0
         ball_y -= 1;
         break;
-    case 0b110:
+    case 0b110: // 315
         ball_y -= 1;
         ball_x -= 1;
         break;
-    case 0b010:
+    case 0b010: // 270
         ball_x -= 1;
         break;
-    case 0b111:
+    case 0b111: // 225
         ball_x -= 1;
         ball_y += 1;
         break;
-    case 0b011:
+    case 0b011: // 180
         ball_y += 1;
         break;
-    case 0b101:
+    case 0b101: // 135
         ball_y += 1;
         ball_x += 1;
         break;
