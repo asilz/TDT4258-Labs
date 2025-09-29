@@ -132,67 +132,33 @@ void draw_ball(unsigned int color)
     SetPixel(ball_x, ball_y, color);
     for (int i = -3; i < 4; ++i)
     {
-        if (ball_x + i < width && ball_x + i >= BAR_X)
-        {
-            SetPixel(ball_x + i, ball_y, color);
-        }
-        if (ball_y + i < height && ball_y + i >= 0)
-        {
-            SetPixel(ball_x, ball_y + i, color);
-        }
+        SetPixel(ball_x + i, ball_y, color);
+        SetPixel(ball_x, ball_y + i, color);
     }
 
-    if (ball_x + 1 < width && ball_x + 1 >= BAR_X && ball_y + 1 < height && ball_y + 1 >= 0)
-    {
-        SetPixel(ball_x + 1, ball_y + 1, color);
-    }
-    if (ball_x + 2 < width && ball_x + 2 >= BAR_X && ball_y + 1 < height && ball_y + 1 >= 0)
-    {
-        SetPixel(ball_x + 2, ball_y + 1, color);
-    }
-    if (ball_x + 1 < width && ball_x + 1 >= BAR_X && ball_y + 2 < height && ball_y + 2 >= 0)
-    {
-        SetPixel(ball_x + 1, ball_y + 2, color);
-    }
+    SetPixel(ball_x + 1, ball_y + 1, color);
 
-    if (ball_x - 1 < width && ball_x - 1 >= BAR_X && ball_y + 1 < height && ball_y + 1 >= 0)
-    {
-        SetPixel(ball_x - 1, ball_y + 1, color);
-    }
-    if (ball_x - 2 < width && ball_x - 2 >= BAR_X && ball_y + 1 < height && ball_y + 1 >= 0)
-    {
-        SetPixel(ball_x - 2, ball_y + 1, color);
-    }
-    if (ball_x - 1 < width && ball_x - 1 >= BAR_X && ball_y + 2 < height && ball_y + 2 >= 0)
-    {
-        SetPixel(ball_x - 1, ball_y + 2, color);
-    }
+    SetPixel(ball_x + 2, ball_y + 1, color);
 
-    if (ball_x + 1 < width && ball_x + 1 >= BAR_X && ball_y - 1 < height && ball_y - 1 >= 0)
-    {
-        SetPixel(ball_x + 1, ball_y - 1, color);
-    }
-    if (ball_x + 2 < width && ball_x + 2 >= BAR_X && ball_y - 1 < height && ball_y - 1 >= 0)
-    {
-        SetPixel(ball_x + 2, ball_y - 1, color);
-    }
-    if (ball_x + 1 < width && ball_x + 1 >= BAR_X && ball_y - 2 < height && ball_y - 2 >= 0)
-    {
-        SetPixel(ball_x + 1, ball_y - 2, color);
-    }
+    SetPixel(ball_x + 1, ball_y + 2, color);
 
-    if (ball_x - 1 < width && ball_x - 1 >= BAR_X && ball_y - 1 < height && ball_y - 1 >= 0)
-    {
-        SetPixel(ball_x - 1, ball_y - 1, color);
-    }
-    if (ball_x - 2 < width && ball_x - 2 >= BAR_X && ball_y - 1 < height && ball_y - 1 >= 0)
-    {
-        SetPixel(ball_x - 2, ball_y - 1, color);
-    }
-    if (ball_x - 1 < width && ball_x - 1 >= BAR_X && ball_y - 2 < height && ball_y - 2 >= 0)
-    {
-        SetPixel(ball_x - 1, ball_y - 2, color);
-    }
+    SetPixel(ball_x - 1, ball_y + 1, color);
+
+    SetPixel(ball_x - 2, ball_y + 1, color);
+
+    SetPixel(ball_x - 1, ball_y + 2, color);
+
+    SetPixel(ball_x + 1, ball_y - 1, color);
+
+    SetPixel(ball_x + 2, ball_y - 1, color);
+
+    SetPixel(ball_x + 1, ball_y - 2, color);
+
+    SetPixel(ball_x - 1, ball_y - 1, color);
+
+    SetPixel(ball_x - 2, ball_y - 1, color);
+
+    SetPixel(ball_x - 1, ball_y - 2, color);
 }
 
 void draw_playing_field()
@@ -255,22 +221,8 @@ void update_game_state()
         break;
     }
 
-    if (ball_y < 0 || ball_y >= height)
-    {
-        ball_angle = (~ball_angle & 1) | (ball_angle & 2) | (ball_angle & 4);
-        if (ball_y < 0)
-        {
-            ball_y = 0;
-        }
-        if (ball_y >= height)
-        {
-            ball_y = height - 1;
-        }
-        draw_ball(white);
-        return;
-    }
-
-    draw_ball(white);
+    const int ball_corners_x[4] = {ball_x + 3, ball_x - 3, ball_x, ball_x};
+    const int ball_corners_y[4] = {ball_y, ball_y, ball_y + 3, ball_y - 3};
 
     if (ball_x < BAR_X)
     {
@@ -278,13 +230,22 @@ void update_game_state()
         return;
     }
 
-    if (ball_x >= width)
+    if (ball_corners_y[3] < 0 || ball_corners_y[2] >= height)
     {
-        currentState = Won;
+        ball_angle = (~ball_angle & 1) | (ball_angle & 2) | (ball_angle & 4);
+        if (ball_corners_y[3] < 0)
+        {
+            ball_y = 3;
+        }
+        if (ball_corners_y[2] >= height)
+        {
+            ball_y = height - 4;
+        }
+        draw_ball(white);
         return;
     }
 
-    if (ball_x == 7)
+    if (ball_corners_x[1] == 7)
     {
         if (ball_y >= bar_y)
         {
@@ -300,34 +261,49 @@ void update_game_state()
             {
                 ball_angle = 0b101;
             }
+            ball_x++;
         }
+
+        draw_ball(white);
         return;
     }
-    for (int i = 0; i < NCOLS; ++i)
+
+    draw_ball(white);
+
+    if (ball_x >= width)
     {
-        for (int j = 0; j < NROWS; ++j)
+        currentState = Won;
+        return;
+    }
+
+    for (int corner = 0; corner < sizeof(ball_corners_x) / sizeof(ball_corners_x[0]); ++corner)
+    {
+        for (int i = 0; i < NCOLS; ++i)
         {
-            if (blocks[i][j].destroyed)
+            for (int j = 0; j < NROWS; ++j)
             {
-                continue;
-            }
-            if (ball_x >= blocks[i][j].pos_x && ball_x < blocks[i][j].pos_x + TILE_SIZE && ball_y >= blocks[i][j].pos_y && ball_y < blocks[i][j].pos_y + TILE_SIZE)
-            {
-                blocks[i][j].destroyed = 1;
-                draw_block(blocks[i][j].pos_x, blocks[i][j].pos_y, TILE_SIZE, TILE_SIZE, black);
-                if (!(ball_angle & 4))
+                if (blocks[i][j].destroyed)
                 {
-                    ball_angle = (~ball_angle & 1) | ((~ball_angle & 2)) | ((ball_angle & 4));
+                    continue;
                 }
-                else
+                if (ball_corners_x[corner] >= blocks[i][j].pos_x && ball_corners_x[corner] < blocks[i][j].pos_x + TILE_SIZE && ball_corners_y[corner] >= blocks[i][j].pos_y && ball_corners_y[corner] < blocks[i][j].pos_y + TILE_SIZE)
                 {
-                    if (ball_x == blocks[i][j].pos_x + TILE_SIZE - 1 || ball_x == blocks[i][j].pos_x)
+                    blocks[i][j].destroyed = 1;
+                    draw_block(blocks[i][j].pos_x, blocks[i][j].pos_y, TILE_SIZE, TILE_SIZE, black);
+                    if (!(ball_angle & 4))
                     {
-                        ball_angle = (ball_angle & 1) | ((~ball_angle & 2)) | ((ball_angle & 4));
+                        ball_angle = (~ball_angle & 1) | ((~ball_angle & 2)) | ((ball_angle & 4));
                     }
                     else
                     {
-                        ball_angle = (~ball_angle & 1) | ((ball_angle & 2)) | ((ball_angle & 4));
+                        if (ball_corners_x[corner] == blocks[i][j].pos_x + TILE_SIZE - 1 || ball_corners_x[corner] == blocks[i][j].pos_x)
+                        {
+                            ball_angle = (ball_angle & 1) | ((~ball_angle & 2)) | ((ball_angle & 4));
+                        }
+                        else
+                        {
+                            ball_angle = (~ball_angle & 1) | ((ball_angle & 2)) | ((ball_angle & 4));
+                        }
                     }
                 }
             }
