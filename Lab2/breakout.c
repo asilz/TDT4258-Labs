@@ -270,7 +270,7 @@ void update_game_state()
 
     draw_ball(white);
 
-    if (ball_x >= width)
+    if (ball_corners_x[0] >= width)
     {
         currentState = Won;
         return;
