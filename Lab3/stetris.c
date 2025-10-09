@@ -1,13 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <termios.h>
 #include <sys/select.h>
+#include <sys/mman.h>
 #include <linux/input.h>
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
 #include <poll.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <errno.h>
 
 // The game state can be used to detect what happens on the playfield
 #define GAMEOVER 0
@@ -15,11 +20,17 @@
 #define ROW_CLEAR (1 << 1)
 #define TILE_ADDED (1 << 2)
 
+#define COLOR_CLEAR 0
+#define COLOR_RED ((0b11111 << 11) | (0 << 5) | 0)
+#define COLOR_BLUE ((0 << 11) | (0 << 5) | 0b11111)
+#define COLOR_GREEN ((0 << 11) | (0b111111 << 5) | 0)
+#define COLOR_YELLOW (COLOR_GREEN | COLOR_RED)
+
 // If you extend this structure, either avoid pointers or adjust
 // the game logic allocate/deallocate and reset the memory
 typedef struct
 {
-    bool occupied;
+    uint16_t color;
 } tile;
 
 typedef struct
@@ -58,11 +69,39 @@ gameConfig game = {
     .initNextGameTick = 50,
 };
 
+static int fd;
+
+static int fdRandom;
+static int fdJoystick;
+
 // This function is called on the start of your application
 // Here you can initialize what ever you need for your task
 // return false if something fails, else true
 bool initializeSenseHat()
 {
+    fd = open("/dev/fb0", O_RDWR);
+    if (fd == -1)
+    {
+        printf("Could not open sense hat memory %d\n", errno);
+        return false;
+    }
+    game.rawPlayfield = mmap(NULL, sizeof(*(game.rawPlayfield)) * 8 * 8, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
+    if (game.rawPlayfield == MAP_FAILED)
+    {
+        printf("Could not map sense hat memory %d\n", errno);
+        return false;
+    }
+    fdRandom = open("/dev/urandom", O_RDONLY);
+    if (fdRandom == -1)
+    {
+        return false;
+    }
+    fdJoystick = open("/dev/input/event4", O_RDONLY);
+    if (fdJoystick == -1)
+    {
+        return false;
+    }
+
     return true;
 }
 
@@ -70,6 +109,10 @@ bool initializeSenseHat()
 // Here you can free up everything that you might have opened/allocated
 void freeSenseHat()
 {
+    (void)munmap(game.rawPlayfield, sizeof(*(game.rawPlayfield)) * 8 * 8);
+    (void)close(fd);
+    (void)close(fdRandom);
+    (void)close(fdJoystick);
 }
 
 // This function should return the key that corresponds to the joystick press
@@ -78,15 +121,35 @@ void freeSenseHat()
 // !!! when nothing was pressed you MUST return 0 !!!
 int readSenseHatJoystick()
 {
-    return 0;
-}
+    // fd_set rfds;
+    // FD_ZERO(&rfds);
+    // FD_SET(fdJoystick, &rfds);
+    //
+    // struct timeval tv = {.tv_sec = 0, .tv_usec = 1000};
+    // select(fdJoystick + 1, &rfds, NULL, NULL, &tv);
+    struct pollfd pollf = {.fd = fdJoystick, .events = EV_KEY};
 
-// This function should render the gamefield on the LED matrix. It is called
-// every game tick. The parameter playfieldChanged signals whether the game logic
-// has changed the playfield
-void renderSenseHatMatrix(bool const playfieldChanged)
-{
-    (void)playfieldChanged;
+    if (poll(&pollf, 1, 1) == 0)
+    {
+        return 0;
+    }
+
+    struct input_event event;
+
+    ssize_t err = read(fdJoystick, &event, sizeof(event));
+    if (err != sizeof(event))
+    {
+        printf("read failed %d\n", event);
+    }
+
+    if (event.value != 1)
+    {
+        return 0;
+    }
+
+    // printf("event value = %d\n", event.code);
+
+    return event.code;
 }
 
 // The game logic uses only the following functions to interact with the playfield.
@@ -95,7 +158,10 @@ void renderSenseHatMatrix(bool const playfieldChanged)
 
 static inline void newTile(coord const target)
 {
-    game.playfield[target.y][target.x].occupied = true;
+    static const uint16_t colors[] = {COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_YELLOW};
+    uint8_t index;
+    (void)read(fdRandom, &index, sizeof(index));
+    game.playfield[target.y][target.x].color = colors[index % (sizeof(colors) / sizeof(*colors))];
 }
 
 static inline void copyTile(coord const to, coord const from)
@@ -120,7 +186,7 @@ static inline void resetRow(unsigned int const target)
 
 static inline bool tileOccupied(coord const target)
 {
-    return game.playfield[target.y][target.x].occupied;
+    return game.playfield[target.y][target.x].color != 0;
 }
 
 static inline bool rowOccupied(unsigned int const target)
@@ -427,8 +493,12 @@ int main(int argc, char **argv)
         tcsetattr(STDIN_FILENO, TCSANOW, &ttystate);
     }
 
-    // Allocate the playing field structure
-    game.rawPlayfield = (tile *)malloc(game.grid.x * game.grid.y * sizeof(tile));
+    if (!initializeSenseHat())
+    {
+        fprintf(stderr, "ERROR: could not initilize sense hat\n");
+        return 1;
+    };
+
     game.playfield = (tile **)malloc(game.grid.y * sizeof(tile *));
     if (!game.playfield || !game.rawPlayfield)
     {
@@ -445,16 +515,9 @@ int main(int argc, char **argv)
     // Start with gameOver
     gameOver();
 
-    if (!initializeSenseHat())
-    {
-        fprintf(stderr, "ERROR: could not initilize sense hat\n");
-        return 1;
-    };
-
     // Clear console, render first time
     fprintf(stdout, "\033[H\033[J");
     renderConsole(true);
-    renderSenseHatMatrix(true);
 
     while (true)
     {
@@ -475,7 +538,6 @@ int main(int argc, char **argv)
 
         bool playfieldChanged = sTetris(key);
         renderConsole(playfieldChanged);
-        renderSenseHatMatrix(playfieldChanged);
 
         // Wait for next tick
         gettimeofday(&eTv, NULL);
@@ -489,7 +551,6 @@ int main(int argc, char **argv)
 
     freeSenseHat();
     free(game.playfield);
-    free(game.rawPlayfield);
 
     return 0;
 }
