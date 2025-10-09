@@ -79,12 +79,36 @@ static int fdJoystick;
 // return false if something fails, else true
 bool initializeSenseHat()
 {
-    fd = open("/dev/fb0", O_RDWR);
-    if (fd == -1)
+    for (int i = 0; i < 128; ++i)
     {
-        printf("Could not open sense hat memory %d\n", errno);
-        return false;
+        char path[256];
+        snprintf(path, sizeof(path), "/sys/class/graphics/fb%d/name", i);
+        fd = open(path, O_RDONLY);
+        if (fd == -1)
+        {
+            printf("failed to open name file %d\n", i);
+            return false;
+        }
+
+        char name[sizeof("RPi-Sense FB")] = {0};
+        ssize_t readSize = read(fd, name, sizeof(name) - 1);
+        (void)close(fd);
+        if (readSize == sizeof(name) - 1)
+        {
+            if (memcmp(name, "RPi-Sense FB", sizeof(name)) == 0)
+            {
+                snprintf(path, sizeof(path), "/dev/fb%d", i);
+                fd = open(path, O_RDWR);
+                if (fd == -1)
+                {
+                    printf("Could not open sense hat memory %d\n", errno);
+                    return false;
+                }
+                break;
+            }
+        }
     }
+
     game.rawPlayfield = mmap(NULL, sizeof(*(game.rawPlayfield)) * 8 * 8, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
     if (game.rawPlayfield == MAP_FAILED)
     {
@@ -96,10 +120,35 @@ bool initializeSenseHat()
     {
         return false;
     }
-    fdJoystick = open("/dev/input/event4", O_RDONLY);
-    if (fdJoystick == -1)
+
+    for (int i = 0; i < 128; ++i)
     {
-        return false;
+        char path[256];
+        snprintf(path, sizeof(path), "/sys/class/input/event%d/device/name", i);
+        fdJoystick = open(path, O_RDONLY);
+        if (fdJoystick == -1)
+        {
+            printf("failed to open name file event %d\n", i);
+            return false;
+        }
+
+        char name[sizeof("Raspberry Pi Sense HAT Joystick")] = {0};
+        ssize_t readSize = read(fdJoystick, name, sizeof(name) - 1);
+        (void)close(fdJoystick);
+        if (readSize == sizeof(name) - 1)
+        {
+            if (memcmp(name, "Raspberry Pi Sense HAT Joystick", sizeof(name)) == 0)
+            {
+                snprintf(path, sizeof(path), "/dev/input/event%d", i);
+                fdJoystick = open(path, O_RDWR);
+                if (fdJoystick == -1)
+                {
+                    printf("Could not open sense hat memory %d\n", errno);
+                    return false;
+                }
+                break;
+            }
+        }
     }
 
     return true;
