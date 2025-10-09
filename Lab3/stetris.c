@@ -121,12 +121,6 @@ void freeSenseHat()
 // !!! when nothing was pressed you MUST return 0 !!!
 int readSenseHatJoystick()
 {
-    // fd_set rfds;
-    // FD_ZERO(&rfds);
-    // FD_SET(fdJoystick, &rfds);
-    //
-    // struct timeval tv = {.tv_sec = 0, .tv_usec = 1000};
-    // select(fdJoystick + 1, &rfds, NULL, NULL, &tv);
     struct pollfd pollf = {.fd = fdJoystick, .events = EV_KEY};
 
     if (poll(&pollf, 1, 1) == 0)
@@ -146,8 +140,6 @@ int readSenseHatJoystick()
     {
         return 0;
     }
-
-    // printf("event value = %d\n", event.code);
 
     return event.code;
 }
